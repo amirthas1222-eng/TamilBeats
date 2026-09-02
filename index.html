@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IsaiBox — Tamil Music Player</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090b10;
+      --panel: #11141b;
+      --panel2: #171b24;
+      --text: #f5f7fb;
+      --muted: #9aa2b2;
+      --line: rgba(255,255,255,.08);
+      --accent: #7c5cff;
+      --accent2: #b09cff;
+      --danger: #ff5d73;
+      --player-h: 88px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 70% -10%, #202044 0, transparent 35%), var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: grid; grid-template-columns: 245px 1fr; min-height: 100vh; padding-bottom: var(--player-h); }
+    aside {
+      position: fixed; inset: 0 auto var(--player-h) 0; width: 245px;
+      padding: 25px 16px; background: rgba(9,11,16,.94); border-right: 1px solid var(--line);
+    }
+    .brand { display:flex; align-items:center; gap:10px; padding: 0 10px 28px; font-size:22px; font-weight:800; }
+    .brand span { color: var(--accent2); }
+    .logo { width:34px; height:34px; border-radius:11px; display:grid; place-items:center; background:linear-gradient(135deg,var(--accent),#d24cff); }
+    nav button {
+      width:100%; border:0; background:transparent; color:var(--muted);
+      text-align:left; padding:12px 13px; border-radius:10px; margin:2px 0;
+      display:flex; gap:13px; align-items:center; font-weight:600;
+    }
+    nav button:hover, nav button.active { background:var(--panel2); color:var(--text); }
+    .nav-icon { width:22px; text-align:center; }
+    main { grid-column:2; padding: 26px clamp(20px,4vw,52px); max-width: 1500px; width:100%; margin:auto; }
+    .topbar { display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:30px; }
+    .search { position:relative; width:min(560px,100%); }
+    .search input {
+      width:100%; background:#151923; border:1px solid var(--line); outline:none; color:var(--text);
+      border-radius:14px; padding:14px 18px 14px 46px;
+    }
+    .search input:focus { border-color:rgba(124,92,255,.7); }
+    .search-icon { position:absolute; left:17px; top:13px; color:var(--muted); }
+    .profile { color:var(--muted); font-size:14px; }
+    section { margin-bottom:36px; }
+    .hero {
+      border:1px solid var(--line); border-radius:24px; padding:34px;
+      background:linear-gradient(120deg, rgba(124,92,255,.28), rgba(21,25,35,.88) 55%), var(--panel);
+      overflow:hidden; position:relative;
+    }
+    .hero:after { content:"♪"; position:absolute; right:8%; bottom:-45px; font-size:230px; color:rgba(255,255,255,.04); }
+    .eyebrow { color:var(--accent2); font-size:12px; font-weight:800; letter-spacing:1.8px; text-transform:uppercase; }
+    h1 { font-size:clamp(32px,5vw,58px); line-height:1; margin:12px 0; max-width:650px; }
+    .hero p { color:#c2c7d2; max-width:620px; line-height:1.7; }
+    .section-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+    h2 { margin:0; font-size:22px; }
+    .count { color:var(--muted); font-size:13px; }
+    .song-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:16px; }
+    .song-card {
+      background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:12px;
+      transition:.2s transform,.2s background; position:relative;
+    }
+    .song-card:hover { transform:translateY(-3px); background:#151923; }
+    .cover { width:100%; aspect-ratio:1; border-radius:12px; object-fit:cover; background:#252a38; display:block; }
+    .song-title { margin:12px 2px 5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .artist { margin:0 2px; color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .card-actions { display:flex; gap:7px; margin-top:12px; }
+    .play-btn, .fav-btn {
+      border:0; border-radius:10px; padding:9px 11px; color:white; background:var(--panel2);
+    }
+    .play-btn { flex:1; background:var(--accent); font-weight:700; }
+    .fav-btn.liked { color:#ff6c83; background:rgba(255,93,115,.1); }
+    .chips { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
+    .chip { border:1px solid var(--line); background:rgba(255,255,255,.05); color:#dce0e8; border-radius:999px; padding:9px 14px; font-size:13px; }
+    .empty { border:1px dashed var(--line); border-radius:16px; padding:35px; text-align:center; color:var(--muted); }
+    .hidden { display:none !important; }
+
+    .player {
+      position:fixed; left:0; right:0; bottom:0; height:var(--player-h); z-index:10;
+      display:grid; grid-template-columns:1fr 1.5fr 1fr; gap:20px; align-items:center;
+      padding:12px 22px; background:rgba(12,14,20,.97); border-top:1px solid var(--line); backdrop-filter:blur(16px);
+    }
+    .now { display:flex; align-items:center; gap:12px; min-width:0; }
+    .now img { width:56px; height:56px; border-radius:9px; object-fit:cover; }
+    .now .meta { min-width:0; }
+    .now .meta div:first-child { font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .now .meta div:last-child { color:var(--muted); font-size:12px; margin-top:4px; }
+    .controls { display:flex; flex-direction:column; align-items:center; gap:7px; }
+    .control-row { display:flex; align-items:center; gap:15px; }
+    .ctrl { border:0; background:transparent; color:#dfe3eb; font-size:18px; }
+    .ctrl.main { width:40px; height:40px; border-radius:50%; background:#fff; color:#111; font-size:16px; }
+    .progress { width:min(520px,100%); display:flex; align-items:center; gap:9px; color:var(--muted); font-size:10px; }
+    input[type=range] { accent-color:var(--accent); width:100%; }
+    .volume { display:flex; justify-content:flex-end; align-items:center; gap:10px; }
+    .volume input { width:120px; }
+    .mobile-nav { display:none; }
+
+    @media (max-width: 800px) {
+      :root { --player-h: 145px; }
+      .app { display:block; padding-bottom:var(--player-h); }
+      aside { display:none; }
+      main { padding:18px 15px; }
+      .topbar { margin-bottom:20px; }
+      .profile { display:none; }
+      .hero { padding:25px 20px; }
+      .song-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+      .player { height:var(--player-h); grid-template-columns:1fr; gap:6px; padding:9px 15px; }
+      .now { justify-content:center; }
+      .volume { display:none; }
+      .mobile-nav {
+        display:flex; position:fixed; bottom:var(--player-h); left:10px; right:10px; z-index:9;
+        background:#151923; border:1px solid var(--line); border-radius:15px; padding:5px;
+      }
+      .mobile-nav button { flex:1; border:0; background:transparent; color:var(--muted); padding:8px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo">♫</div>Isai<span>Box</span></div>
+    <nav id="desktopNav">
+      <button class="active" data-view="home"><span class="nav-icon">⌂</span> Home</button>
+      <button data-view="search"><span class="nav-icon">⌕</span> Search</button>
+      <button data-view="library"><span class="nav-icon">▣</span> Your Library</button>
+      <button data-view="favorites"><span class="nav-icon">♥</span> Favourites</button>
+      <button data-view="history"><span class="nav-icon">◷</span> History</button>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div class="search">
+        <span class="search-icon">⌕</span>
+        <input id="searchInput" placeholder="Search Tamil songs, artists..." autocomplete="off">
+      </div>
+      <div class="profile">Tamil Music • Your playlist</div>
+    </div>
+
+    <div id="homeView">
+      <section class="hero">
+        <div class="eyebrow">Tamil music player</div>
+        <h1>Un favourite Tamil songs. One place.</h1>
+        <p>Search songs, build your favourites, revisit your listening history and enjoy a clean Spotify-inspired music player.</p>
+        <div class="chips">
+          <button class="chip" onclick="showView('favorites')">♥ Favourites</button>
+          <button class="chip" onclick="showView('history')">◷ Listening History</button>
+          <button class="chip" onclick="showView('library')">▣ Your Library</button>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head"><h2>Popular Tamil Songs</h2><span class="count" id="songCount"></span></div>
+        <div class="song-grid" id="homeSongs"></div>
+      </section>
+
+      <section>
+        <div class="section-head"><h2>Made for you</h2></div>
+        <div class="song-grid" id="recommendedSongs"></div>
+      </section>
+    </div>
+
+    <div id="searchView" class="hidden">
+      <section>
+        <div class="section-head"><h2>Search results</h2><span class="count" id="resultCount"></span></div>
+        <div class="song-grid" id="searchResults"></div>
+      </section>
+    </div>
+
+    <div id="libraryView" class="hidden">
+      <section>
+        <div class="section-head"><h2>Your Library</h2><span class="count">Saved locally</span></div>
+        <div class="song-grid" id="librarySongs"></div>
+      </section>
+    </div>
+
+    <div id="favoritesView" class="hidden">
+      <section>
+        <div class="section-head"><h2>♥ Favourites</h2><span class="count" id="favCount"></span></div>
+        <div class="song-grid" id="favoriteSongs"></div>
+      </section>
+    </div>
+
+    <div id="historyView" class="hidden">
+      <section>
+        <div class="section-head"><h2>◷ History</h2><span class="count">Recently played</span></div>
+        <div class="song-grid" id="historySongs"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="mobile-nav">
+  <button onclick="showView('home')">⌂<br><small>Home</small></button>
+  <button onclick="showView('search')">⌕<br><small>Search</small></button>
+  <button onclick="showView('library')">▣<br><small>Library</small></button>
+  <button onclick="showView('favorites')">♥<br><small>Favourites</small></button>
+  <button onclick="showView('history')">◷<br><small>History</small></button>
+</div>
+
+<div class="player">
+  <div class="now">
+    <img id="nowCover" src="" alt="">
+    <div class="meta">
+      <div id="nowTitle">Select a song</div>
+      <div id="nowArtist">Your player is ready</div>
+    </div>
+    <button class="fav-btn" id="playerFav" onclick="toggleFavorite(currentSong?.id)" title="Add to favourites">♡</button>
+  </div>
+  <div class="controls">
+    <div class="control-row">
+      <button class="ctrl" onclick="previousSong()">↶</button>
+      <button class="ctrl main" id="playPause" onclick="togglePlay()">▶</button>
+      <button class="ctrl" onclick="nextSong()">↷</button>
+    </div>
+    <div class="progress">
+      <span id="currentTime">0:00</span>
+      <input id="progress" type="range" min="0" max="100" value="0" oninput="seekSong(this.value)">
+      <span id="duration">0:00</span>
+    </div>
+  </div>
+  <div class="volume">
+    <span>🔊</span><input id="volume" type="range" min="0" max="1" step=".01" value=".8">
+  </div>
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+  // Replace the audio URLs below with MP3 files you own/have permission to use.
+  const songs = [
+    {id:1, title:"Aasa Kooda", artist:"Sai Abhyankkar, Preethi Mukundan", album:"Tamil Hits", cover:"https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:2, title:"Katchi Sera", artist:"Sai Abhyankkar", album:"Tamil Hits", cover:"https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:3, title:"Megham Karukatha", artist:"Dhanush", album:"Thiruchitrambalam", cover:"https://images.unsplash.com/photo-1521337581100-8ca9a73a5f79?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:4, title:"Kaavaalaa", artist:"Anirudh Ravichander, Shilpa Rao", album:"Jailer", cover:"https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:5, title:"Vaa Vaathi", artist:"G. V. Prakash Kumar, Shweta Mohan", album:"Vaathi", cover:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:6, title:"Naa Ready", artist:"Anirudh Ravichander, Vijay", album:"Leo", cover:"https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:7, title:"Arabic Kuthu", artist:"Anirudh Ravichander, Jonita Gandhi", album:"Beast", cover:"https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:8, title:"Thenmozhi", artist:"Santhosh Narayanan", album:"Thiruchitrambalam", cover:"https://images.unsplash.com/photo-1524650359799-842906ca1c06?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:9, title:"Enjoy Enjaami", artist:"Dhee, Arivu", album:"Independent Tamil", cover:"https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:10, title:"Chellamma", artist:"Anirudh Ravichander, Jonita Gandhi", album:"Doctor", cover:"https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:11, title:"Rowdy Baby", artist:"Dhanush, Dhee", album:"Maari 2", cover:"https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=600&q=80", audio:""},
+    {id:12, title:"Kutty Story", artist:"Anirudh Ravichander, Vijay", album:"Master", cover:"https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=600&q=80", audio:""}
+  ];
+
+  let favorites = JSON.parse(localStorage.getItem("isaiFavorites") || "[]");
+  let history = JSON.parse(localStorage.getItem("isaiHistory") || "[]");
+  let currentSong = null;
+  let currentIndex = -1;
+  const audio = document.getElementById("audio");
+
+  function isFav(id) { return favorites.includes(id); }
+
+  function card(song) {
+    return `<article class="song-card">
+      <img class="cover" src="${song.cover}" alt="${song.title}">
+      <div class="song-title" title="${song.title}">${song.title}</div>
+      <p class="artist" title="${song.artist}">${song.artist}</p>
+      <div class="card-actions">
+        <button class="play-btn" onclick="playSong(${song.id})">▶ Play</button>
+        <button class="fav-btn ${isFav(song.id) ? "liked":""}" onclick="toggleFavorite(${song.id})" title="Add to favourites">${isFav(song.id) ? "♥" : "♡"}</button>
+      </div>
+    </article>`;
+  }
+
+  function render(list, elementId, emptyText) {
+    const el = document.getElementById(elementId);
+    if (!list.length) {
+      el.innerHTML = `<div class="empty" style="grid-column:1/-1">${emptyText}</div>`;
+      return;
+    }
+    el.innerHTML = list.map(card).join("");
+  }
+
+  function renderAll() {
+    render(songs, "homeSongs");
+    render([...songs].reverse().slice(0,6), "recommendedSongs");
+    render(songs.filter(s => favorites.includes(s.id)), "favoriteSongs", "No favourites yet. Tap ♡ on any song to save it.");
+    render(history.map(id => songs.find(s => s.id === id)).filter(Boolean), "historySongs", "Your recently played songs will appear here.");
+    render(songs, "librarySongs");
+    document.getElementById("songCount").textContent = `${songs.length} songs`;
+    document.getElementById("favCount").textContent = `${favorites.length} saved`;
+  }
+
+  function showView(view) {
+    ["home","search","library","favorites","history"].forEach(v => {
+      document.getElementById(v + "View").classList.toggle("hidden", v !== view);
+    });
+    document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+    if (view === "search") {
+      document.getElementById("searchInput").focus();
+      runSearch();
+    }
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  function runSearch() {
+    const q = document.getElementById("searchInput").value.trim().toLowerCase();
+    const results = songs.filter(s => `${s.title} ${s.artist} ${s.album}`.toLowerCase().includes(q));
+    render(results, "searchResults", q ? "No matching songs found." : "Type a song or artist in the search bar.");
+    document.getElementById("resultCount").textContent = q ? `${results.length} result${results.length !== 1 ? "s":""}` : "";
+  }
+
+  function playSong(id) {
+    const song = songs.find(s => s.id === id);
+    if (!song) return;
+    currentSong = song;
+    currentIndex = songs.findIndex(s => s.id === id);
+    document.getElementById("nowCover").src = song.cover;
+    document.getElementById("nowTitle").textContent = song.title;
+    document.getElementById("nowArtist").textContent = song.artist;
+    document.getElementById("playerFav").textContent = isFav(id) ? "♥" : "♡";
+    document.getElementById("playerFav").classList.toggle("liked", isFav(id));
+
+    history = [id, ...history.filter(x => x !== id)].slice(0, 12);
+    localStorage.setItem("isaiHistory", JSON.stringify(history));
+    renderAll();
+
+    if (song.audio) {
+      audio.src = song.audio;
+      audio.play().catch(()=>{});
+      document.getElementById("playPause").textContent = "❚❚";
+    } else {
+      document.getElementById("playPause").textContent = "▶";
+      alert("Demo mode: add your own MP3 URL/file path to the song's audio field in index.html.");
+    }
+  }
+
+  function togglePlay() {
+    if (!currentSong) { playSong(songs[0].id); return; }
+    if (!currentSong.audio) {
+      alert("Add an MP3 URL/file path to this song in index.html to enable audio playback.");
+      return;
+    }
+    if (audio.paused) { audio.play(); document.getElementById("playPause").textContent="❚❚"; }
+    else { audio.pause(); document.getElementById("playPause").textContent="▶"; }
+  }
+
+  function toggleFavorite(id) {
+    if (!id) return;
+    favorites = isFav(id) ? favorites.filter(x => x !== id) : [id, ...favorites];
+    localStorage.setItem("isaiFavorites", JSON.stringify(favorites));
+    renderAll();
+    if (currentSong?.id === id) {
+      document.getElementById("playerFav").textContent = isFav(id) ? "♥" : "♡";
+      document.getElementById("playerFav").classList.toggle("liked", isFav(id));
+    }
+  }
+
+  function nextSong() {
+    if (!songs.length) return;
+    playSong(songs[(currentIndex + 1) % songs.length].id);
+  }
+  function previousSong() {
+    if (!songs.length) return;
+    playSong(songs[(currentIndex - 1 + songs.length) % songs.length].id);
+  }
+  function seekSong(value) {
+    if (audio.duration) audio.currentTime = (value / 100) * audio.duration;
+  }
+  function formatTime(sec) {
+    if (!isFinite(sec)) return "0:00";
+    return `${Math.floor(sec/60)}:${String(Math.floor(sec%60)).padStart(2,"0")}`;
+  }
+
+  audio.addEventListener("timeupdate", () => {
+    if (audio.duration) document.getElementById("progress").value = (audio.currentTime/audio.duration)*100;
+    document.getElementById("currentTime").textContent = formatTime(audio.currentTime);
+    document.getElementById("duration").textContent = formatTime(audio.duration);
+  });
+  audio.addEventListener("ended", nextSong);
+  document.getElementById("volume").addEventListener("input", e => audio.volume = e.target.value);
+  document.getElementById("searchInput").addEventListener("input", () => {
+    if (document.getElementById("searchView").classList.contains("hidden")) showView("search");
+    else runSearch();
+  });
+
+  renderAll();
+</script>
+</body>
+</html>
