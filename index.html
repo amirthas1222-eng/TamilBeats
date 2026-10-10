@@ -334,9 +334,9 @@
       audio.play().catch(()=>{});
       document.getElementById("playPause").textContent = "❚❚";
     } else {
-      document.getElementById("playPause").textContent = "▶";
-      alert("Demo mode: add your own MP3 URL/file path to the song's audio field in index.html.");
-    }
+  document.getElementById("playPause").textContent = "▶";
+  alert("No audio found for this song yet. Try again in a moment or add your own MP3 URL.");
+}
   }
 
   function togglePlay() {
@@ -388,7 +388,28 @@
     else runSearch();
   });
 
+  async function loadPreviews() {
+  await Promise.all(songs.map(async s => {
+    if (s.audio) return; // keep your own MP3 if you set one
+    try {
+      const term = encodeURIComponent(`${s.title} ${s.artist.split(",")[0]}`);
+      const res = await fetch(
+        `https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=IN`
+      );
+      const data = await res.json();
+      const firstWord = s.title.toLowerCase().split(" ")[0];
+      const hit =
+        data.results.find(r => r.previewUrl && r.trackName.toLowerCase().includes(firstWord)) ||
+        data.results.find(r => r.previewUrl);
+      if (hit) {
+        s.audio = hit.previewUrl;
+        s.cover = hit.artworkUrl100.replace("100x100", "600x600");
+      }
+    } catch (e) { /* leave song without audio */ }
+  }));
   renderAll();
+loadPreviews();
+}
 </script>
 </body>
 </html>
